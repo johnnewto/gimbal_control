@@ -1,0 +1,8 @@
+setuptools~=57.0.0
+opencv-python~=4.7.0.72
+imutils~=0.5.4
+PyGObject~=3.44.1
+numpy~=1.24.3
+PySimpleGUI~=4.60.5
+pynput~=1.7.6
+
