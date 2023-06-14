@@ -9,36 +9,29 @@ from twisted.internet.endpoints import HostnameEndpoint
 from twisted.internet.protocol import ClientFactory, ReconnectingClientFactory, Factory
 from twisted.protocols.basic import LineReceiver
 from viewsheen import gimbal_cntrl
+from viewsheen import GST_Video
 import cv2, time
 import numpy as np
 from pynput import keyboard, mouse
 
-
+GIMBAL_SPEED = 50
 
 class EchoClient(LineReceiver):
     end = b"Bye-bye!"
-    gimbal_speed = 50
 
     def connectionMade(self):
-        data = gimbal_cntrl.pan_tilt(self.gimbal_speed)
-        # self.sendLine(data)
-        self.transport.write(data)
-
+        print("connection made")
 
     def lineReceived(self, line):
         print("receive:", line)
         if line == self.end:
             self.transport.loseConnection()
 
-    def sendData(self):
-        data = gimbal_cntrl.pan_tilt(self.gimbal_speed)
-        self.sendLine(data)
+    def connectionLost(self, reason):
+        pass
 
 _loopCounter = 0
 def runEverySecond(data):
-    """
-    Called at ever loop interval.
-    """
     global _loopCounter
     _loopCounter += 1
     # print('A new second has passed.', data, _loopCounter)
@@ -46,42 +39,58 @@ def runEverySecond(data):
 
 last_key = None
 data = None
-def sendData(protocol):
+def control_gimbal(protocol, video):
     global _loopCounter, last_key, data
     # get image from another thread
-    cv2.imshow('RTSP Stream', np.zeros((50, 100, 3), 'uint8'))
-    key = cv2.waitKey(50)
+    if video.frame_available():
+        frame = video.frame().copy()
+        cv2.imshow('RTSP Stream', frame)
+
+    key = cv2.waitKey(1)
     # data = None
     if key != -1:
         print(key)
         last_key = key
-
+    if key == ord('q') or key == 27:
+        reactor.stop()
     if key == ord('d'):  # Right arrow key
         print("Right arrow key pressed")
-        data = gimbal_cntrl.pan_tilt(protocol.gimbal_speed)
+        data = gimbal_cntrl.pan_tilt(GIMBAL_SPEED)
 
     elif key == ord('a'):  # Left arrow key
         print("Left arrow key pressed")
-        data = gimbal_cntrl.pan_tilt(-protocol.gimbal_speed)
+        data = gimbal_cntrl.pan_tilt(-GIMBAL_SPEED)
 
     elif key == ord('w'):
         print("Up arrow key pressed")
-        data = gimbal_cntrl.pan_tilt(0, protocol.gimbal_speed)
+        data = gimbal_cntrl.pan_tilt(0, GIMBAL_SPEED)
 
 
     elif key == ord('s'):
         print("Down arrow key pressed")
-        data = gimbal_cntrl.pan_tilt(0, -protocol.gimbal_speed)
+        data = gimbal_cntrl.pan_tilt(0, -GIMBAL_SPEED)
 
     if last_key is not None and data is not None:
         print("resending data")
         # data = gimbal_cntrl.pan_tilt(protocol.gimbal_speed)
         protocol.transport.write(data)
 
-def connected(protocol):
+def connected(protocol, video):
     # protocol is an instance of EchoClient and is connected
-    return task.LoopingCall(sendData, protocol).start(0.001)
+    cv2.namedWindow('RTSP Stream', cv2.WINDOW_NORMAL)
+    print('Initialising stream...')
+    waited = 0
+    while not video.frame_available():
+        waited += 1
+        print('\r  Frame not available (x{})'.format(waited), end='')
+        cv2.waitKey(30)
 
+    print('\nSuccess!\nStarting streaming - press "q" to quit.')
+
+    return task.LoopingCall(control_gimbal, protocol, video).start(0.05)
+
+# def control_gimbal():
+#
 
 def main():
 
@@ -89,7 +98,8 @@ def main():
     VS_PORT = 2000
     ep = HostnameEndpoint(reactor, VS_IP_ADDRESS, VS_PORT)
     d = ep.connect(Factory.forProtocol(EchoClient))
-    d.addCallback(connected)
+    video = GST_Video.GST_Video()
+    d.addCallback(connected, video)
     return d
 
 def on_key_release(key):
@@ -111,4 +121,5 @@ if __name__ == "__main__":
     # self.key_listener.start()
     task.LoopingCall(runEverySecond, 'hello').start(1)
     reactor.callWhenRunning(main)
+
     reactor.run()

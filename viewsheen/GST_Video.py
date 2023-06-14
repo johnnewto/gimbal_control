@@ -57,7 +57,7 @@ class FPS:
 # parameters = cv2.aruco.DetectorParameters_create()
 
 
-class Video():
+class GST_Video():
     """BlueRov video capture class constructor
 
     Attributes:
@@ -188,128 +188,6 @@ class Video():
         return Gst.FlowReturn.OK
 
 
-data_received = ''
-
-
-def socket_function(address, port):
-    global data_received
-    sock = socket.socket(socket.AF_INET,  # Internet
-                         socket.SOCK_DGRAM)  # UDP
-
-    sock.bind((address, port))
-
-    while True:
-        data_received = sock.recv(4096, )
-        data_received = str(data_received)[2:-1]  # get rid of b/'.....'
-        pass
-
-
-def main(sock=None):
-
-
-    cv2.namedWindow('Receive', cv2.WINDOW_NORMAL)
-
-    # threading.Thread(target=socket_function, args=('10.42.0.1',1234), daemon=True).start()
-    # threading.Thread(target=socket_function, args=('127.0.0.1',9000), daemon=True).start()
-
-    video = Video()
-
-
-
-    print('Initialising stream...')
-    waited = 0
-    while not video.frame_available():
-        waited += 1
-        print('\r  Frame not available (x{})'.format(waited), end='')
-        cv2.waitKey(30)
-
-    print('\nSuccess!\nStarting streaming - press "q" to quit.')
-
-    gimbal_speed = 40
-    while True:
-
-        if video.frame_available():
-            frame = video.frame().copy()
-
-
-
-
-            # frame = resize(frame, width=4000)
-            # r, c, _ = frame.shape
-            # p = (np.array(params.pos)*(r,r,c,c)).astype(int)
-            # frame = frame[p[0]:p[1], p[2]:p[3]]
-
-            # print(codes, diffs)
-            # print (f"Mean value received = {code0/16:.1f}  {code1/16:.1f} ")
-            # cv2.putText(frame, f'Rx: {codes}', (10, 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 15)
-            # cv2.imshow('Receive', frame[1900:2200, 1920:2220])
-
-            # shp = frame.shape
-
-            # cv2.putText(frame, f'fps={params.fps}  bitrate={params.bitrate} Kbits/s', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1,
-            # cv2.putText(frame, f'{frame_num:2d} {data_received}', (10, 30), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 2)
-            cv2.imshow('Receive', frame)
-
-        k = cv2.waitKey(1)
-        if k == ord('q') or k == ord('Q') or k == 27:
-            break
-
-        if k == ord('d'):  # Right arrow key
-            print("Right arrow key pressed")
-            data = pan_tilt(gimbal_speed)
-            KeyReleaseThread(sock, data).start()
-
-        if k == ord('a'):  # Left arrow key
-            print("Left arrow key pressed")
-            data = pan_tilt(-gimbal_speed)
-            KeyReleaseThread(sock, data).start()
-
-        if k == ord('w'):
-            print("Up arrow key pressed")
-            data = pan_tilt(0, gimbal_speed)
-            KeyReleaseThread(sock, data).start()
-
-        if k == ord('s'):
-            print("Down arrow key pressed")
-            data = pan_tilt(0, -gimbal_speed)
-            KeyReleaseThread(sock, data).start()
-
-        if k == ord('1'):
-            print("Zoom in pressed")
-            data = zoom(1)
-            sock.sendall(data)
-
-        if k == ord('2'):
-            print("Zoom out pressed")
-            data = zoom(2)
-            sock.sendall(data)
-
-        if k == ord('3'):
-            print("Zoom stop pressed")
-            data = zoom(2)
-            sock.sendall(data)
-
-        if k == ord('4'):
-            print("Zoom  = 1")
-            data = zoom(4)
-            sock.sendall(data)
-
-        if k == ord('5'):
-            print("Zoom x2 in")
-            data = zoom(5)
-            sock.sendall(data)
-
-        if k == ord('6'):
-            print("Zoom x2 out")
-            data = zoom(6)
-            sock.sendall(data)
-
-        if k == ord('c'):
-            print("Snapshot in pressed")
-            data = snapshot(1, 0)
-            KeyReleaseThread(sock, data).start()
-
-            # KeyReleaseThread(sock, data).start()
 """
 Test with :
 
@@ -339,12 +217,27 @@ experimental:
 """
 
 if __name__ == '__main__':
-    from gimbal_cntrl import pan_tilt, snapshot,  zoom, VS_IP_ADDRESS, VS_PORT, KeyReleaseThread
-    import socket
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # Connect to viewsheen gimbal
-    sock.connect((VS_IP_ADDRESS, VS_PORT))
+    cv2.namedWindow('Receive', cv2.WINDOW_NORMAL)
 
-    main(sock)
-    sock.close()
+    video = GST_Video()
+    print('Initialising stream...')
+    waited = 0
+    while not video.frame_available():
+        waited += 1
+        print('\r  Frame not available (x{})'.format(waited), end='')
+        cv2.waitKey(30)
+
+    print('\nSuccess!\nStarting streaming - press "q" to quit.')
+
+    gimbal_speed = 40
+    while True:
+
+        if video.frame_available():
+            frame = video.frame().copy()
+            cv2.imshow('Receive', frame)
+
+        k = cv2.waitKey(1)
+        if k == ord('q') or k == ord('Q') or k == 27:
+            break
+
     cv2.destroyAllWindows()

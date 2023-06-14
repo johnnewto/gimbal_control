@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 """
-Gstreamer video capture
-https://www.ardusub.com/developers/opencv.html
+viewsheen gimbal control with simplegui
 """
 import socket
 import time
 
 import cv2
-import gi
-import numpy as np
-import PySimpleGUI as sg
-import Gstreamer_receive_RTSP as gst
 
+import PySimpleGUI as sg
+
+# from GST_Video import GST_Video
+from viewsheen import GST_Video
 from viewsheen import gimbal_cntrl
 
 data_received = ''
@@ -112,7 +111,7 @@ def main(sock=None):
 
     cv2.namedWindow('Receive', cv2.WINDOW_NORMAL | cv2.WINDOW_FREERATIO | cv2.WINDOW_GUI_EXPANDED)
 
-    video = gst.Video()
+    video = GST_Video.GST_Video()
 
     print('Initialising stream...')
     waited = 0
