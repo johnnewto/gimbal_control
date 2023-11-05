@@ -23,6 +23,16 @@ def crc_fly16(pBuffer, length):
         crcTmp = wCRC_Table[((pBuffer[i] >> 4) ^ tmp) & 15] ^ (tmp >> 4)
     return crcTmp
 
+COORDINATE_SYS = 0
+def set_coordinate_sys(val):
+    """" sets the coordinate system of the gimbal"""
+    global COORDINATE_SYS
+    COORDINATE_SYS = val
+
+def set_coordinate_sys_geodetic():
+    """" sets the coordinate system of the gimbal"""
+    COORDINATE_SYS = 0
+
 
 def int16_to_bytes(value):
     # Extract the low and high bytes
@@ -101,7 +111,7 @@ def yaw(angle):
     lower_bound, upper_bound = 0, 3600
     angle = max(lower_bound, min(int(angle*10), upper_bound))
     [low_byte, high_byte] = int16_to_bytes(angle)
-    D1_6 = np.array([1, low_byte, high_byte, 0, 0, 0], dtype=np.int8).tobytes()
+    D1_6 = np.array([1, low_byte, high_byte, COORDINATE_SYS, 0, 0], dtype=np.int8).tobytes()
     data = bytes.fromhex(HEADER)+bytearray([S_ID, COMMAND]) + D1_6
     checksum = int16_to_bytes(crc_fly16(data, len(data)))
     return data+checksum
@@ -118,7 +128,17 @@ def pitch(angle):
     lower_bound, upper_bound = -1000, 600
     angle = max(lower_bound, min(int(angle*10), upper_bound))
     [low_byte, high_byte] = int16_to_bytes(angle)
-    D1_6 = np.array([2, low_byte, high_byte, 0, 0, 0], dtype=np.int8).tobytes()
+    D1_6 = np.array([2, low_byte, high_byte, COORDINATE_SYS, 0, 0], dtype=np.int8).tobytes()
+    data = bytes.fromhex(HEADER)+bytearray([S_ID, COMMAND]) + D1_6
+    checksum = int16_to_bytes(crc_fly16(data, len(data)))
+    return data+checksum
+
+def quick_calibration():
+    """ calibrate the gimbal"""
+    HEADER = "eb 90 0a 00 00 00 00 00 00 00 00 00 40 88".replace(" ", "")
+    S_ID = 0x0f
+    COMMAND = 0x0F
+    D1_6 = np.array([0, 0, 0, 0, 0, 0], dtype=np.int8).tobytes()
     data = bytes.fromhex(HEADER)+bytearray([S_ID, COMMAND]) + D1_6
     checksum = int16_to_bytes(crc_fly16(data, len(data)))
     return data+checksum
